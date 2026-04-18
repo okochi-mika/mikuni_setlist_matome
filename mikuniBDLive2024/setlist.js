@@ -1,0 +1,18 @@
+// setlist.js の冒頭
+const setlistData = [
+    { title: "1. My music ", id: "Cpjvl2Q5_Zw" }, // YouTube IDを調べて入れる
+    { title: "2. 君がいるから", id: "npE8RBnBsAk" },
+    { title: "3. ふたりのカメラ", id: "DC9ACmQjsHc" }, 
+    { title: "4. my home", id: "I97eBy3BaS4" },
+    { title: "5. それが、愛でしょう", id: "TMoOdbjcjGU" },
+    { title: "6. Alone", id: "JjWwfUbOP0w" },
+    { title: "7. し・か・ら・れ・て", id: "UlOYSURhafg" },
+    { title: "8. 初恋の君", id: "vBfJBE0KqPc" },
+    { title: "9. Remember", id: "iDacFs674Kc" },
+    { title: "10. トキメキ・ラッシュで行きましょう", id: "RQNoSQl2Zzo" },
+    { title: "11. 南風", id: "f8Nv-5wIlbg" },
+    { title: "12. 2000EXPRESS", id: "EHD0Tm-wji0" },
+    { title: "13. POPCORN", id: "jOFJRZKyxw0" },
+    { title: "14. この場所が好きで", id: "tMR3hb4iR34" },
+    { title: "15. Love song on the radio", id: "tHwMV_zfq2A" }
+];

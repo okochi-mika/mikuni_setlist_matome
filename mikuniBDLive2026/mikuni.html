@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <title>mikuniBDLive2026 - Setlist Player</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 【メモ】JSで曲が選ばれた時に、このクラスを付け外しして「今これ聴いてるよ」を視覚化する */
+        .active-song { background-color: #fef3c7; border-left: 4px solid #f59e0b; }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8"> <div class="max-w-6xl mx-auto mb-8 flex items-center gap-4">
+        <div class="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center bg-gray-100 border">
+            <img src="mikunibd2026.png" alt="392 Logo" class="w-full h-full object-cover">
+        </div>
+        <h1 class="text-xl md:text-2xl font-bold text-gray-800 uppercase tracking-wider">
+            Mikuni Shimokawa Birthday Live ⭐️  2026/3/28
+        </h1>
+    </div>
+    
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row gap-8">
+
+        <div class="w-full md:w-2/3 order-1 md:order-2">
+            <div class="aspect-video bg-black rounded-lg overflow-hidden shadow-2xl">
+                <div id="player"></div>
+            </div>
+            <div class="mt-4 p-4 bg-white rounded shadow text-sm text-gray-600">
+                <p>現在再生中: <span id="current-title" class="font-bold text-gray-900">未選択</span></p>
+            </div>
+        </div>
+
+        <div class="w-full md:w-1/3 bg-white p-6 rounded-lg shadow-md order-2 md:order-1">
+            <h2 class="text-xl font-bold mb-4 border-b pb-2">Setlist</h2>
+            <ul id="setlist" class="space-y-2">
+                <li class="p-2 hover:bg-gray-50 rounded cursor-pointer border flex justify-between items-center" data-video-id="TMoOdbjcjGU">
+                    <span>1. それが、愛でしょう</span>
+                    <button class="text-xs bg-blue-500 text-white px-2 py-1 rounded">再生</button>
+                </li>
+                <li class="p-2 hover:bg-gray-50 rounded cursor-pointer border flex justify-between items-center" data-video-id="ZjvQ6Vj_wuw">
+                    <span>2. all the way</span>
+                    <button class="text-xs bg-blue-500 text-white px-2 py-1 rounded">再生</button>
+                </li>
+                <li class="p-2 hover:bg-gray-50 rounded cursor-pointer border flex justify-between items-center" data-video-id="--bHB0EumJc">
+                    <span>3. Shooting Star</span>
+                    <button class="text-xs bg-blue-500 text-white px-2 py-1 rounded">再生</button>
+                </li>
+                <li class="p-2 hover:bg-gray-50 rounded cursor-pointer border flex justify-between items-center" data-video-id="c1ov6YNA10M">
+                    <span>4. 冬のナイフ</span>
+                    <button class="text-xs bg-blue-500 text-white px-2 py-1 rounded">再生</button>
+                </li>
+                <li class="p-2 hover:bg-gray-50 rounded cursor-pointer border flex justify-between items-center" data-video-id="dtpdj9qnb8k">
+                    <span>5. 会いたくて</span>
+                    <button class="text-xs bg-blue-500 text-white px-2 py-1 rounded">再生</button>
+                </li>
+                <li class="p-2 hover:bg-gray-50 rounded cursor-pointer border flex justify-between items-center" data-video-id="0mTnSzDFhyE">
+                    <span>6. Life</span>
+                    <button class="text-xs bg-blue-500 text-white px-2 py-1 rounded">再生</button>
+                </li>
+                <li class="p-2 hover:bg-gray-50 rounded cursor-pointer border flex justify-between items-center" data-video-id="JjWwfUbOP0w">
+                    <span>7. Alone </span>
+                    <button class="text-xs bg-blue-500 text-white px-2 py-1 rounded">再生</button>
+                </li>
+                <li class="p-2 hover:bg-gray-50 rounded cursor-pointer border flex justify-between items-center" data-video-id="UKoXBZPEYfw">
+                    <span>8. ubiquitous</span>
+                    <button class="text-xs bg-blue-500 text-white px-2 py-1 rounded">再生</button>
+                </li>
+                <li class="p-2 hover:bg-gray-50 rounded cursor-pointer border flex justify-between items-center" data-video-id="f8Nv-5wIlbg">
+                    <span>9. 南風</span>
+                    <button class="text-xs bg-blue-500 text-white px-2 py-1 rounded">再生</button>
+                </li>
+                <li class="p-2 hover:bg-gray-50 rounded cursor-pointer border flex justify-between items-center" data-video-id="2tIb-6kiNZI">
+                    <span>10. イ〜じゃナイ!?</span>
+                    <button class="text-xs bg-blue-500 text-white px-2 py-1 rounded">再生</button>
+                </li>
+                <li class="p-2 hover:bg-gray-50 rounded cursor-pointer border flex justify-between items-center" data-video-id="87Gp3DRjF9k">
+                    <span>11. tomorrow</span>
+                    <button class="text-xs bg-blue-500 text-white px-2 py-1 rounded">再生</button>
+                </li>
+                <li class="p-2 hover:bg-gray-50 rounded cursor-pointer border flex justify-between items-center" data-video-id="oIXAMbXmlVw">
+                    <span>12. TRUE</span>
+                    <button class="text-xs bg-blue-500 text-white px-2 py-1 rounded">再生</button>
+                </li>
+            </ul>
+
+            <div class="mt-6 flex gap-2">
+                <button id="next-btn" class="flex-1 bg-gray-800 text-white py-2 rounded hover:bg-gray-700">次の曲へ</button>
+                <button id="random-btn" class="flex-1 bg-gray-600 text-white py-2 rounded hover:bg-gray-700">ランダム</button>
+            </div>
+        </div>
+
+    </div>
+    <script>
+        /* 【ノート：JavaScriptの役割】
+          GitHub Pagesは「静的」だけど、このJSが動くことで「動的」な体験を作っている。
+          1. YouTube APIと通信して動画を操る。
+          2. クリックされた曲のIDを特定して中身を書き換える。
+        */
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        var player;
+        var currentVideoIndex = -1;
+        const songs = document.querySelectorAll('#setlist li');
+
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('player', {
+                height: '100%',
+                width: '100%',
+                // 【初期状態】ページを開いた時に最初に出る曲のID。
+                videoId: 'TMoOdbjcjGU', 
+                events: {
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        }
+
+        /* 【将来の野望メモ：ハイブリッドアプリ化】
+          もしアプリにするなら、この下の処理を「スマホの通知」と連動させたり、
+          「LocalStorage」を使って自分の再生回数をカウントしたりする機能を追加したい。
+        */
+
+        songs.forEach((song, index) => {
+            song.addEventListener('click', () => {
+                playVideo(index);
+            });
+        });
+
+        function playVideo(index) {
+            currentVideoIndex = index;
+            const videoId = songs[index].getAttribute('data-video-id');
+            const title = songs[index].querySelector('span').innerText;
+
+            player.loadVideoById(videoId);
+            document.getElementById('current-title').innerText = title;
+
+            songs.forEach(s => s.classList.remove('active-song'));
+            songs[index].classList.add('active-song');
+        }
+
+        document.getElementById('next-btn').addEventListener('click', () => {
+            let nextIndex = (currentVideoIndex + 1) % songs.length;
+            playVideo(nextIndex);
+        });
+
+        document.getElementById('random-btn').addEventListener('click', () => {
+            let randomIndex = Math.floor(Math.random() * songs.length);
+            playVideo(randomIndex);
+        });
+
+        function onPlayerStateChange(event) {
+            // 曲が終わったら自動で「次へ」ボタンを擬似クリックする仕組み
+            if (event.data == YT.PlayerState.ENDED) {
+                document.getElementById('next-btn').click();
+            }
+        }
+    </script>
+</body>
+</html>

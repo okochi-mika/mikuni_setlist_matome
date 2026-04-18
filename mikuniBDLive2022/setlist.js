@@ -1,0 +1,14 @@
+// setlist.js の冒頭
+const setlistData = [
+    { title: "1. キミの願い ", id: "vSEqeEtLMG4" }, // YouTube IDを調べて入れる
+    { title: "2. 君に吹く風", id: "iPkuvrQaJQg" },
+    { title: "3. それが、愛でしょう", id: "TMoOdbjcjGU" }, 
+    { title: "4. キミノユメ", id: "HEHvGgZsdl8" },
+    { title: "5. all the way", id: "ZjvQ6Vj_wuw" },
+    { title: "6. KOHAKU", id: "FZsIi1KH4xI" },
+    { title: "7. Life", id: "0mTnSzDFhyE" },
+    { title: "8. 枯れない花", id: "HKOy3b5ZSVQ" },
+    { title: "9. はじまり", id: "JjWwfUbOP0w" },
+    { title: "10. Alone", id: "KKYMYE1gyNI" },
+    { title: "11. 南風", id: "f8Nv-5wIlbg" }
+];
