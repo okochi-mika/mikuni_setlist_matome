@@ -72,14 +72,18 @@
                         `;
 
                         li.onclick = () => {
-                            player.loadVideoById(track.id);
-                            document.getElementById('current-title').innerText = track.title;
-                            
-                            document.querySelectorAll('#setlist li').forEach(el => el.classList.remove('border-blue-400', 'bg-blue-50'));
-                            li.classList.add('border-blue-400', 'bg-blue-50');
-                        };
-                        list.appendChild(li);
-                    });
+                            // 1. YouTubeを再生する
+                        player.loadVideoById(track.id);
+                        
+                        // 2. 「現在再生中」のテキストだけを書き換える
+                        // // ※ ここが 'live-logo' になっていたら 'current-title' に直す！
+                        document.getElementById('current-title').innerText = track.title;
+    
+                        // 3. リストの見た目を整える
+                        document.querySelectorAll('#setlist li').forEach(el => el.classList.remove('border-blue-400', 'bg-blue-50'));
+                        li.classList.add('border-blue-400', 'bg-blue-50');
+                    };
+                    });                  
                 })
                 .catch(err => {
                     console.error("Error:", err);
