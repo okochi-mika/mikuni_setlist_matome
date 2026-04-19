@@ -1,4 +1,23 @@
-<script>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Live Player</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+</head>
+<body class="bg-gray-100 p-4">
+    <div class="max-w-2xl mx-auto bg-white p-6 rounded shadow">
+        <h1 id="live-title" class="text-2xl font-bold mb-4">Loading...</h1>
+        
+        <div id="player" class="aspect-video w-full mb-4"></div>
+
+        <h2 id="current-title" class="text-xl mb-4 font-semibold text-blue-600">曲を選択してください</h2>
+        
+        <ul id="setlist" class="space-y-2">
+            </ul>
+    </div>       
+    <script>
         let player;
         let songsData = [];
         const urlParams = new URLSearchParams(window.location.search);
@@ -63,3 +82,5 @@
             loadLiveData(liveId);
         }
     </script>
+</body>
+</html>
