@@ -69,6 +69,15 @@
                     document.getElementById('live-title').innerText = "データが見つかりません (404)";
                 });
         }
+
+        function onPlayerReady() {
+            // ここを空にしてもOK（後で自動再生などを入れたい時に使う）
+        }
+
+        // YouTube APIの準備とは切り離して、ページが開かれたら即座に読み込む
+        if (liveId) {
+            loadLiveData(liveId);
+        }
     </script>
 </body>
 </html>
