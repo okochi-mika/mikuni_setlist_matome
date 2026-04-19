@@ -83,6 +83,8 @@
                         document.querySelectorAll('#setlist li').forEach(el => el.classList.remove('border-blue-400', 'bg-blue-50'));
                         li.classList.add('border-blue-400', 'bg-blue-50');
                     };
+                    // ↓ これを足す！作ったリストを画面に追加する命令です
+                        list.appendChild(li);
                     });                  
                 })
                 .catch(err => {
