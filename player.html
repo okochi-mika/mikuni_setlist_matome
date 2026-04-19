@@ -2,21 +2,30 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live Player</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
 </head>
-<body class="bg-gray-100 p-4">
-    <div class="max-w-2xl mx-auto bg-white p-6 rounded shadow">
-        <h1 id="live-title" class="text-2xl font-bold mb-4">Loading...</h1>
+<body class="bg-[#f7f3e9] p-4 md:p-8"> <div class="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-lg">
         
-        <div id="player" class="aspect-video w-full mb-4"></div>
+        <div class="flex justify-center mb-6">
+            <img id="live-logo" src="images/mikunibd.png" alt="Logo" class="max-h-24 object-contain">
+        </div>
 
-        <h2 id="current-title" class="text-xl mb-4 font-semibold text-blue-600">曲を選択してください</h2>
+        <h1 id="live-title" class="text-xl md:text-2xl font-bold mb-4 text-center border-b pb-4 text-gray-800">Loading...</h1>
         
+        <div id="player" class="aspect-video w-full mb-4 rounded overflow-hidden bg-black"></div>
+
+        <div class="bg-gray-50 border border-gray-100 p-3 rounded-md mb-6 text-sm text-gray-500">
+            現在再生中：<span id="current-title" class="font-bold text-blue-600">未選択</span>
+        </div>
+        
+        <h3 class="text-lg font-bold mb-3 text-gray-700 border-l-4 border-blue-500 pl-2">Setlist</h3>
         <ul id="setlist" class="space-y-2">
             </ul>
-    </div>       
+    </div>
+
     <script>
         let player;
         let songsData = [];
@@ -33,7 +42,7 @@
         }
 
         function onPlayerReady() {
-            // API準備完了後の処理
+            if (liveId) loadLiveData(liveId);
         }
 
         function loadLiveData(id) {
@@ -46,40 +55,36 @@
                     songsData = data.tracks;
                     document.getElementById('live-title').innerText = data.title;
                     
+                    // 【追加】ロゴの差し替え処理（JSONにlogo指定があればそれ、なければ共通ロゴ）
+                    const logoPath = data.logo ? `images/${data.logo}` : 'images/mikunibd.png';
+                    document.getElementById('live-logo').src = logoPath;
+
                     const list = document.getElementById('setlist');
                     list.innerHTML = '';
 
-                    // ★ここから修正：見た目をリッチにする
                     songsData.forEach((track, index) => {
                         const li = document.createElement('li');
-                        // クラス名を増やして、横並び(flex)・角丸・影をつけます
-                        li.className = "p-3 bg-white border border-gray-200 rounded-lg shadow-sm flex justify-between items-center cursor-pointer hover:bg-blue-50 active:bg-blue-100 transition duration-200";
+                        li.className = "p-3 bg-white border border-gray-100 rounded-lg shadow-sm flex justify-between items-center cursor-pointer hover:bg-blue-50 transition duration-200";
                         
-                        // 中身を「曲名」と「青いボタン」のセットにする
                         li.innerHTML = `
-                            <span class="text-gray-800 font-medium">${track.title}</span>
-                            <button class="bg-blue-600 text-white text-xs px-3 py-1.5 rounded-full shadow-sm">再生</button>
+                            <span class="text-gray-700 font-medium">${track.title}</span>
+                            <button class="bg-blue-600 text-white text-[10px] px-3 py-1 rounded-full uppercase tracking-tighter">再生</button>
                         `;
 
                         li.onclick = () => {
                             player.loadVideoById(track.id);
                             document.getElementById('current-title').innerText = track.title;
                             
-                            // 選択した曲を目立たせる（青枠をつける）
-                            document.querySelectorAll('#setlist li').forEach(el => el.classList.remove('border-blue-500', 'bg-blue-50'));
-                            li.classList.add('border-blue-500', 'bg-blue-50');
+                            document.querySelectorAll('#setlist li').forEach(el => el.classList.remove('border-blue-400', 'bg-blue-50'));
+                            li.classList.add('border-blue-400', 'bg-blue-50');
                         };
                         list.appendChild(li);
                     });
                 })
                 .catch(err => {
                     console.error("Error:", err);
-                    document.getElementById('live-title').innerText = "データが見つかりません (404)";
+                    document.getElementById('live-title').innerText = "データが見つかりません";
                 });
-        }
-
-        if (liveId) {
-            loadLiveData(liveId);
         }
     </script>
 </body>
