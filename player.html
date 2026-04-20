@@ -37,7 +37,10 @@
                 height: '360',
                 width: '640',
                 videoId: '', 
-                events: { 'onReady': onPlayerReady }
+                events: {
+                 'onReady': onPlayerReady,
+                 'onStateChange': onPlayerStateChange // 曲が終わったら次の曲に移動
+                 }
             });
         }
 
@@ -92,6 +95,39 @@
                     document.getElementById('live-title').innerText = "データが見つかりません";
                 });
         }
+        let currentTrackIndex = 0; // 今何曲目かを覚えておく変数
+        let isRandom = false;      // ランダムモードかどうか（後でスイッチを作れます）
+        function onPlayerStateChange(event) {
+            // event.data === 0 は「再生終了（ENDED）」を意味します
+        if (event.data === YT.PlayerState.ENDED) {
+        playNextSong();}
+    }
+    
+    function playNextSong() {
+    if (isRandom) {
+        // ランダムモード：全曲の中から適当に選ぶ
+        currentTrackIndex = Math.floor(Math.random() * songsData.length);
+    } else {
+        // セトリ順：次の曲へ（最後なら最初に戻る）
+        currentTrackIndex = (currentTrackIndex + 1) % songsData.length;
+    }
+
+    const nextTrack = songsData[currentTrackIndex];
+    player.loadVideoById(nextTrack.id);
+    document.getElementById('current-title').innerText = nextTrack.title;
+    
+    // リストのハイライトも動かす
+    updateListHighlight(currentTrackIndex);
+}
+
+// リストの青枠を更新する専用の関数（整理のために分離）
+    function updateListHighlight(index) {
+    const listItems = document.querySelectorAll('#setlist li');
+    listItems.forEach(el => el.classList.remove('border-blue-400', 'bg-blue-50'));
+    if(listItems[index]) {
+        listItems[index].classList.add('border-blue-400', 'bg-blue-50');
+    }
+}
     </script>
 </body>
 </html>
