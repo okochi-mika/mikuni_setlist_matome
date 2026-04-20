@@ -57,10 +57,6 @@
                 .then(data => {
                     songsData = data.tracks;
                     document.getElementById('live-title').innerText = data.title;
-                    
-                    // 【追加】ロゴの差し替え処理（JSONにlogo指定があればそれ、なければ共通ロゴ）
-                    const logoPath = data.logo ? `images/${data.logo}` : 'images/mikunibd.png';
-                    document.getElementById('live-logo').src = logoPath;
 
                     const list = document.getElementById('setlist');
                     list.innerHTML = '';
@@ -79,7 +75,6 @@
                         player.loadVideoById(track.id);
                         
                         // 2. 「現在再生中」のテキストだけを書き換える
-                        // // ※ ここが 'live-logo' になっていたら 'current-title' に直す！
                         document.getElementById('current-title').innerText = track.title;
     
                         // 3. リストの見た目を整える
