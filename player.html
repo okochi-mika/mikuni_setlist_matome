@@ -29,6 +29,7 @@
     <script>
         let player;
         let songsData = [];
+        let currentTrackIndex = 0; // 現在の曲番号を管理
         const urlParams = new URLSearchParams(window.location.search);
         const liveId = urlParams.get('id');
 
@@ -37,10 +38,10 @@
                 height: '360',
                 width: '640',
                 videoId: '', 
-                events: {
-                 'onReady': onPlayerReady,
-                 'onStateChange': onPlayerStateChange // 曲が終わったら次の曲に移動
-                 }
+                events: { 
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange // 状態変化を監視
+                }
             });
         }
 
@@ -48,15 +49,49 @@
             if (liveId) loadLiveData(liveId);
         }
 
+        // 曲が終わったら呼ばれる関数
+        function onPlayerStateChange(event) {
+            // event.data === 0 は「再生終了」
+            if (event.data === YT.PlayerState.ENDED) {
+                playNextSong();
+            }
+        }
+
+        function playNextSong() {
+            // 次の曲があるかチェック
+            if (currentTrackIndex < songsData.length - 1) {
+                currentTrackIndex++;
+                const nextTrack = songsData[currentTrackIndex];
+                
+                // 次の曲を再生
+                player.loadVideoById(nextTrack.id);
+                document.getElementById('current-title').innerText = nextTrack.title;
+                
+                // リストの見た目を更新
+                updateHighlight(currentTrackIndex);
+            } else {
+                console.log("全曲終了しました！");
+                // 最後の曲が終わったらそのまま止まります
+            }
+        }
+
+        function updateHighlight(index) {
+            const listItems = document.querySelectorAll('#setlist li');
+            listItems.forEach(el => el.classList.remove('border-blue-400', 'bg-blue-50'));
+            if (listItems[index]) {
+                listItems[index].classList.add('border-blue-400', 'bg-blue-50');
+            }
+        }
+
         function loadLiveData(id) {
             fetch(`data/${id}.json`)
-                .then(res => {
-                    if (!res.ok) throw new Error('Network response was not ok');
-                    return res.json();
-                })
+                .then(res => res.json())
                 .then(data => {
                     songsData = data.tracks;
                     document.getElementById('live-title').innerText = data.title;
+                    
+                    const logoPath = data.logo ? `images/${data.logo}` : 'images/mikunibd.png';
+                    document.getElementById('live-logo').src = logoPath;
 
                     const list = document.getElementById('setlist');
                     list.innerHTML = '';
@@ -71,58 +106,19 @@
                         `;
 
                         li.onclick = () => {
-                            // 1. YouTubeを再生する
-                        player.loadVideoById(track.id);
-                        
-                        // 2. 「現在再生中」のテキストだけを書き換える
-                        document.getElementById('current-title').innerText = track.title;
-    
-                        // 3. リストの見た目を整える
-                        document.querySelectorAll('#setlist li').forEach(el => el.classList.remove('border-blue-400', 'bg-blue-50'));
-                        li.classList.add('border-blue-400', 'bg-blue-50');
-                    };
-                    // ↓ これを足す！作ったリストを画面に追加する命令です
+                            currentTrackIndex = index; // クリックされた曲の番号をセット
+                            player.loadVideoById(track.id);
+                            document.getElementById('current-title').innerText = track.title;
+                            updateHighlight(index);
+                        };
                         list.appendChild(li);
-                    });                  
-                })
-                .catch(err => {
-                    console.error("Error:", err);
-                    document.getElementById('live-title').innerText = "データが見つかりません";
+                    });
                 });
         }
-        let currentTrackIndex = 0; // 今何曲目かを覚えておく変数
-        let isRandom = false;      // ランダムモードかどうか（後でスイッチを作れます）
-        function onPlayerStateChange(event) {
-            // event.data === 0 は「再生終了（ENDED）」を意味します
-        if (event.data === YT.PlayerState.ENDED) {
-        playNextSong();}
-    }
-    
-    function playNextSong() {
-    if (isRandom) {
-        // ランダムモード：全曲の中から適当に選ぶ
-        currentTrackIndex = Math.floor(Math.random() * songsData.length);
-    } else {
-        // セトリ順：次の曲へ（最後なら最初に戻る）
-        currentTrackIndex = (currentTrackIndex + 1) % songsData.length;
-    }
 
-    const nextTrack = songsData[currentTrackIndex];
-    player.loadVideoById(nextTrack.id);
-    document.getElementById('current-title').innerText = nextTrack.title;
-    
-    // リストのハイライトも動かす
-    updateListHighlight(currentTrackIndex);
-}
-
-// リストの青枠を更新する専用の関数（整理のために分離）
-    function updateListHighlight(index) {
-    const listItems = document.querySelectorAll('#setlist li');
-    listItems.forEach(el => el.classList.remove('border-blue-400', 'bg-blue-50'));
-    if(listItems[index]) {
-        listItems[index].classList.add('border-blue-400', 'bg-blue-50');
-    }
-}
+        if (liveId) {
+            loadLiveData(liveId);
+        }
     </script>
 </body>
 </html>
