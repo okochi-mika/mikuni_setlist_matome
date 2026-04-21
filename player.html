@@ -34,30 +34,30 @@
         </div>
     </div>
 
-    <script>
+   <script>
         let player;
         let songsData = [];
         let currentTrackIndex = 0;
         const urlParams = new URLSearchParams(window.location.search);
         const liveId = urlParams.get('id');
 
-        // 1. YouTube APIが準備できたらプレイヤーを作る
+        // 1. YouTube APIの準備
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('player', {
                 height: '360',
                 width: '640',
                 videoId: '', 
                 events: { 
-                    'onReady': onPlayerReady,
+                    'onReady': onPlayerReady, // 準備ができたら下の関数を呼ぶ
                     'onStateChange': onPlayerStateChange
                 }
             });
         }
 
-        // 2. プレイヤーの準備ができたらJSONを読み込む（これが重要！）
+        // 2. プレイヤーの準備が完了したら実行される（ここが抜けていました！）
         function onPlayerReady() {
             if (liveId) {
-                loadLiveData(liveId);
+                loadLiveData(liveId); // ここで初めてデータを読みに行く
             }
         }
 
@@ -68,15 +68,14 @@
             }
         }
 
-        // --- 再生コントロール用関数 ---
+        // --- 再生コントロール ---
 
         function playNextSong() {
             if (currentTrackIndex < songsData.length - 1) {
                 currentTrackIndex++;
                 playSelectedTrack();
             } else {
-                // 最後まで行ったら最初に戻る（ループ再生）
-                currentTrackIndex = 0;
+                currentTrackIndex = 0; // ループ再生
                 playSelectedTrack();
             }
         }
@@ -92,7 +91,7 @@
         }
 
         function playSelectedTrack() {
-            if (!player || !player.loadVideoById) return; // プレイヤーがない場合は無視
+            if (!player || !player.loadVideoById) return;
             const track = songsData[currentTrackIndex];
             player.loadVideoById(track.id);
             document.getElementById('current-title').innerText = track.title;
@@ -107,10 +106,13 @@
             }
         }
 
-        // 4. データを読み込んでリストを作る
+        // 4. データ読み込みとリスト作成
         function loadLiveData(id) {
             fetch(`data/${id}.json`)
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) throw new Error('JSONが見つかりません');
+                    return res.json();
+                })
                 .then(data => {
                     songsData = data.tracks;
                     document.getElementById('live-title').innerText = data.title;
