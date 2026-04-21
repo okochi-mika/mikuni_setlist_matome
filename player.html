@@ -37,10 +37,11 @@
     <script>
         let player;
         let songsData = [];
-        let currentTrackIndex = 0; // 現在の曲番号を管理
+        let currentTrackIndex = 0;
         const urlParams = new URLSearchParams(window.location.search);
         const liveId = urlParams.get('id');
 
+        // 1. YouTube APIが準備できたらプレイヤーを作る
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('player', {
                 height: '360',
@@ -48,33 +49,40 @@
                 videoId: '', 
                 events: { 
                     'onReady': onPlayerReady,
-                    'onStateChange': onPlayerStateChange // 状態変化を監視
+                    'onStateChange': onPlayerStateChange
                 }
             });
         }
 
-        // 曲が終わった時の自動処理
-        function onPlayerStateChange(event) {
-            if (event.data === YT.PlayerState.ENDED) {
-                playNextSong(); // 自動で次へ
+        // 2. プレイヤーの準備ができたらJSONを読み込む（これが重要！）
+        function onPlayerReady() {
+            if (liveId) {
+                loadLiveData(liveId);
             }
         }
 
-        // 「次の曲へ」ボタンの処理
+        // 3. 曲が終わった時の自動処理
+        function onPlayerStateChange(event) {
+            if (event.data === YT.PlayerState.ENDED) {
+                playNextSong(); 
+            }
+        }
+
+        // --- 再生コントロール用関数 ---
+
         function playNextSong() {
             if (currentTrackIndex < songsData.length - 1) {
                 currentTrackIndex++;
                 playSelectedTrack();
             } else {
-                // 最後まで行ったら止まる（必要なら currentTrackIndex = 0; でループ）
-                console.log("完走しました！");
+                // 最後まで行ったら最初に戻る（ループ再生）
+                currentTrackIndex = 0;
+                playSelectedTrack();
             }
         }
 
-        // 「ランダム」ボタンの処理
         function playRandomSong() {
             let newIndex;
-            // 同じ曲が選ばれないようにループ
             do {
                 newIndex = Math.floor(Math.random() * songsData.length);
             } while (newIndex === currentTrackIndex && songsData.length > 1);
@@ -83,15 +91,12 @@
             playSelectedTrack();
         }
 
-        // 曲を再生して画面を更新する共通の関数
         function playSelectedTrack() {
+            if (!player || !player.loadVideoById) return; // プレイヤーがない場合は無視
             const track = songsData[currentTrackIndex];
             player.loadVideoById(track.id);
             document.getElementById('current-title').innerText = track.title;
             updateHighlight(currentTrackIndex);
-            
-            // スマホで見やすいようにプレイヤー位置までスクロール
-            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         
         function updateHighlight(index) {
@@ -102,6 +107,7 @@
             }
         }
 
+        // 4. データを読み込んでリストを作る
         function loadLiveData(id) {
             fetch(`data/${id}.json`)
                 .then(res => res.json())
@@ -125,18 +131,16 @@
                         `;
 
                         li.onclick = () => {
-                            currentTrackIndex = index; // クリックされた曲の番号をセット
-                            player.loadVideoById(track.id);
-                            document.getElementById('current-title').innerText = track.title;
-                            updateHighlight(index);
+                            currentTrackIndex = index;
+                            playSelectedTrack();
                         };
                         list.appendChild(li);
                     });
+                })
+                .catch(err => {
+                    console.error("Error:", err);
+                    document.getElementById('live-title').innerText = "データが見つかりません";
                 });
-        }
-
-        if (liveId) {
-            loadLiveData(liveId);
         }
     </script>
 </body>
