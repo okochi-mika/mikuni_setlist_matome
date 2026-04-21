@@ -24,6 +24,14 @@
         <h3 class="text-lg font-bold mb-3 text-gray-700 border-l-4 border-blue-500 pl-2">Setlist</h3>
         <ul id="setlist" class="space-y-2">
             </ul>
+            <div class="grid grid-cols-2 gap-4 mt-8 pt-6 border-t border-gray-100">
+            <button onclick="playNextSong()" class="bg-[#334155] text-white py-3 rounded-md font-bold shadow-md active:scale-95 transition">
+                次の曲へ
+            </button>
+            <button onclick="playRandomSong()" class="bg-[#64748b] text-white py-3 rounded-md font-bold shadow-md active:scale-95 transition">
+                ランダム
+            </button>
+        </div>
     </div>
 
     <script>
@@ -45,36 +53,47 @@
             });
         }
 
-        function onPlayerReady() {
-            if (liveId) loadLiveData(liveId);
-        }
-
-        // 曲が終わったら呼ばれる関数
+        // 曲が終わった時の自動処理
         function onPlayerStateChange(event) {
-            // event.data === 0 は「再生終了」
             if (event.data === YT.PlayerState.ENDED) {
-                playNextSong();
+                playNextSong(); // 自動で次へ
             }
         }
 
+        // 「次の曲へ」ボタンの処理
         function playNextSong() {
-            // 次の曲があるかチェック
             if (currentTrackIndex < songsData.length - 1) {
                 currentTrackIndex++;
-                const nextTrack = songsData[currentTrackIndex];
-                
-                // 次の曲を再生
-                player.loadVideoById(nextTrack.id);
-                document.getElementById('current-title').innerText = nextTrack.title;
-                
-                // リストの見た目を更新
-                updateHighlight(currentTrackIndex);
+                playSelectedTrack();
             } else {
-                console.log("全曲終了しました！");
-                // 最後の曲が終わったらそのまま止まります
+                // 最後まで行ったら止まる（必要なら currentTrackIndex = 0; でループ）
+                console.log("完走しました！");
             }
         }
 
+        // 「ランダム」ボタンの処理
+        function playRandomSong() {
+            let newIndex;
+            // 同じ曲が選ばれないようにループ
+            do {
+                newIndex = Math.floor(Math.random() * songsData.length);
+            } while (newIndex === currentTrackIndex && songsData.length > 1);
+            
+            currentTrackIndex = newIndex;
+            playSelectedTrack();
+        }
+
+        // 曲を再生して画面を更新する共通の関数
+        function playSelectedTrack() {
+            const track = songsData[currentTrackIndex];
+            player.loadVideoById(track.id);
+            document.getElementById('current-title').innerText = track.title;
+            updateHighlight(currentTrackIndex);
+            
+            // スマホで見やすいようにプレイヤー位置までスクロール
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
         function updateHighlight(index) {
             const listItems = document.querySelectorAll('#setlist li');
             listItems.forEach(el => el.classList.remove('border-blue-400', 'bg-blue-50'));
