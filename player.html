@@ -41,18 +41,23 @@
         const urlParams = new URLSearchParams(window.location.search);
         const liveId = urlParams.get('id');
 
-        // 1. YouTube APIの準備
+         // 1. YouTube APIの準備
+
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('player', {
                 height: '360',
                 width: '640',
-                videoId: '', 
-                events: { 
-                    'onReady': onPlayerReady, // 準備ができたら下の関数を呼ぶ
-                    'onStateChange': onPlayerStateChange
-                }
-            });
+                videoId: '', // 最初は空にする
+                playerVars: {
+                    'playsinline': 1, // ★重要：iPhoneなどで勝手に全画面にならない設定
+                    'rel': 0          // 関連動画を出さない
+        },
+        events: { 
+            'onReady': onPlayerReady, // 準備ができたら下の関数を呼ぶ
+            'onStateChange': onPlayerStateChange
         }
+    });
+}
 
         // 2. プレイヤーの準備が完了したら実行される（ここが抜けていました！）
         function onPlayerReady() {
