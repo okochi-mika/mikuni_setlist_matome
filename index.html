@@ -24,11 +24,23 @@
 </head>
 <body class="p-6 md:p-12">
 
-    <header class="text-center mb-16 border-b-2 border-gray-800 pb-8">
-        <h1 class="text-3xl md:text-4xl font-bold text-gray-800 tracking-widest">
-            ♪ Live Archive Log
-        </h1>
-        <p class="mt-4 text-gray-600 italic">あの日の音、あの時の言葉を辿る。</p>
+    <header class="relative mb-16 border-b-2 border-gray-800 pb-8">
+        <div class="flex justify-center md:justify-end mb-6 md:mb-0 md:absolute md:top-0 md:right-0">
+            <div class="flex items-center gap-2">
+                <input id="songSearchInput" type="text" list="songTitleList"
+                    placeholder="曲名で絞り込み"
+                    class="border border-gray-300 rounded px-2 py-1 text-sm text-gray-700 w-36 sm:w-48 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                <datalist id="songTitleList"></datalist>
+                <button id="songSearchBtn" type="button" class="bg-blue-700 text-white px-3 py-1 rounded text-sm font-bold hover:bg-blue-800">検索</button>
+                <button id="songSearchClearBtn" type="button" class="text-gray-400 text-sm hover:text-gray-600">✕</button>
+            </div>
+        </div>
+        <div class="text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 tracking-widest">
+                ♪ Live Archive Log</h1>
+            <p class="mt-4 text-gray-60 italic">あの日の音、あの時の言葉を辿る。</p>
+            <p id="songSearchStatus" class="mt-3 text-xs text-gray-400"></p>
+        </div>
     </header>
 
     <main class="max-w-3xl mx-auto space-y-12">
@@ -585,6 +597,100 @@
     <footer class="mt-20 text-center text-gray-400 text-xs">
         &copy; 2026 Mika Archive Project.
     </footer>
+
+    <script>
+    (function () {
+        const statusEl = document.getElementById('songSearchStatus');
+        const input = document.getElementById('songSearchInput');
+        const datalist = document.getElementById('songTitleList');
+        const searchBtn = document.getElementById('songSearchBtn');
+        const clearBtn = document.getElementById('songSearchClearBtn');
+        const sections = Array.from(document.querySelectorAll('main > section'));
+
+        // 各カードにライブIDを紐付ける
+        sections.forEach(sec => {
+            const a = sec.querySelector('a[href*="player.html?id="]');
+            if (a) {
+                const m = a.getAttribute('href').match(/id=(\d+)/);
+                if (m) sec.dataset.liveId = m[1];
+            }
+        });
+
+        // 「1. 曲名」→「曲名」のように先頭の番号を除去
+        const normalize = (title) => title.replace(/^\s*\d+[\.\)、]\s*/, '').trim();
+
+        // 曲名（正規化後） -> ライブIDのSet
+        const songIndex = new Map();
+        const ids = sections.map(s => s.dataset.liveId).filter(Boolean);
+
+        Promise.all(ids.map(id =>
+            fetch(`data/${id}.json`, { cache: 'no-store' })
+                .then(res => (res.ok ? res.json() : null))
+                .catch(() => null)
+                .then(data => {
+                    if (!data || !Array.isArray(data.tracks)) return;
+                    data.tracks.forEach(track => {
+                        const name = normalize(track.title || '');
+                        if (!name) return;
+                        if (!songIndex.has(name)) songIndex.set(name, new Set());
+                        songIndex.get(name).add(id);
+                    });
+                })
+        )).then(() => {
+            const titles = Array.from(songIndex.keys()).sort((a, b) => a.localeCompare(b, 'ja'));
+            datalist.innerHTML = titles.map(t => `<option value="${t.replace(/"/g, '&quot;')}"></option>`).join('');
+            statusEl.textContent = `${titles.length}曲のデータを読み込みました。曲名を入力して絞り込めます。`;
+        });
+
+        function resetView() {
+            sections.forEach(sec => { sec.style.display = ''; });
+            statusEl.textContent = `${songIndex.size}曲のデータを読み込みました。曲名を入力して絞り込めます。`;
+        }
+
+        function applyFilter(query) {
+            const q = query.trim();
+            if (!q) { resetView(); return; }
+
+            // 完全一致を優先
+            let matchIds = null;
+            let matchedLabel = null;
+            for (const [title, idSet] of songIndex.entries()) {
+                if (title === q) { matchIds = idSet; matchedLabel = title; break; }
+            }
+
+            // 完全一致がなければ部分一致で複数曲をまとめる
+            if (!matchIds) {
+                const merged = new Set();
+                const matchedTitles = [];
+                for (const [title, idSet] of songIndex.entries()) {
+                    if (title.includes(q)) {
+                        idSet.forEach(id => merged.add(id));
+                        matchedTitles.push(title);
+                    }
+                }
+                if (merged.size > 0) {
+                    matchIds = merged;
+                    matchedLabel = matchedTitles.join('」「');
+                }
+            }
+
+            if (!matchIds || matchIds.size === 0) {
+                sections.forEach(sec => { sec.style.display = 'none'; });
+                statusEl.textContent = `「${q}」を含む曲は見つかりませんでした。`;
+                return;
+            }
+
+            sections.forEach(sec => {
+                sec.style.display = matchIds.has(sec.dataset.liveId) ? '' : 'none';
+            });
+            statusEl.textContent = `「${matchedLabel}」を歌ったライブ ${matchIds.size}件を表示中。`;
+        }
+
+        searchBtn.addEventListener('click', () => applyFilter(input.value));
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyFilter(input.value); });
+        clearBtn.addEventListener('click', () => { input.value = ''; resetView(); });
+    })();
+    </script>
 
 </body>
 </html>

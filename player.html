@@ -50,7 +50,7 @@
 function onYouTubeIframeAPIReady() {
     // URLからIDを取得してデータをロードするのはそのまま
     if (liveId) {
-        fetch(`data/${liveId}.json`)
+        fetch(`data/${liveId}.json`, { cache: 'no-store' })
             .then(res => res.json())
             .then(data => {
                 songsData = data.tracks;
@@ -125,7 +125,7 @@ function onYouTubeIframeAPIReady() {
 
         // 4. データ読み込みとリスト作成
         function loadLiveData(id) {
-            fetch(`data/${id}.json`)
+            fetch(`data/${id}.json`, { cache: 'no-store' })
                 .then(res => {
                     if (!res.ok) throw new Error('JSONが見つかりません');
                     return res.json();
