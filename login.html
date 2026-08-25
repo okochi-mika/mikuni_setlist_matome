@@ -94,7 +94,9 @@
                 const { error } = await window.sb.auth.signInWithOtp({
                     email,
                     options: {
-                        emailRedirectTo: window.location.origin + window.location.pathname.replace(/login\.html$/, 'mypage.html')
+                        // Netlifyなどでは配信URLの「.html」が省略されることがあるため、
+                        // 現在のパスから置換するのではなく、絶対パスで直接指定する。
+                        emailRedirectTo: window.location.origin + '/mypage.html'
                     }
                 });
                 submitBtn.disabled = false;

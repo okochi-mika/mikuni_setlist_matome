@@ -612,8 +612,10 @@
         const sections = Array.from(document.querySelectorAll('main > section'));
 
         // 各カードにライブIDを紐付ける
+        // Netlifyなど一部のホスティングは配信時にリンクの「.html」を省略することがあるため、
+        // "player.html?id=" のような拡張子ありきの文字列ではなく、"id=数字" というパターンで柔軟に拾う。
         sections.forEach(sec => {
-            const a = sec.querySelector('a[href*="player.html?id="]');
+            const a = sec.querySelector('a[href*="player"][href*="id="]');
             if (a) {
                 const m = a.getAttribute('href').match(/id=(\d+)/);
                 if (m) sec.dataset.liveId = m[1];
