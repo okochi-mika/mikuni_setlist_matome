@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>マイページ | Live Archive Log</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sawarabi+Mincho&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabaseClient.js"></script>
+    <script src="js/songUtils.js"></script>
+    <script src="js/songCatalog.js"></script>
+    <style>
+        body {
+            font-family: 'Sawarabi+Mincho', serif;
+            background-color: #f7f3e9;
+        }
+        .paper-card {
+            box-shadow: 2px 4px 15px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body class="p-6 md:p-12">
+
+    <header class="text-center mb-12">
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-800 tracking-widest">
+            ♪ マイページ
+        </h1>
+        <p id="userEmailLabel" class="mt-3 text-gray-500 text-sm"></p>
+    </header>
+
+    <main class="max-w-2xl mx-auto space-y-10">
+
+        <div id="notLoggedIn" class="paper-card bg-white p-8 rounded-sm border-l-4 border-blue-200 text-center hidden">
+            <p class="text-gray-700 mb-4">マイページを見るにはログインが必要です。</p>
+            <a href="login.html" class="inline-block bg-blue-700 text-white px-4 py-2 rounded font-bold hover:bg-blue-800">ログインページへ</a>
+        </div>
+
+        <div id="loggedInContent" class="space-y-10 hidden">
+
+            <section class="paper-card bg-white p-8 rounded-sm border-l-4 border-blue-200">
+                <h2 class="text-lg font-bold text-blue-900 mb-4">👤 表示名</h2>
+                <p class="text-sm text-gray-500 mb-4">マイページやコメントなどで表示される名前です。未設定の場合はメールアドレスが表示されます。</p>
+                <form id="displayNameForm" class="flex flex-col sm:flex-row gap-3">
+                    <input id="displayNameInput" type="text" maxlength="30" placeholder="例：みか"
+                        class="flex-1 border border-gray-300 rounded px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    <button type="submit" id="displayNameSaveBtn" class="bg-blue-700 text-white px-4 py-2 rounded font-bold hover:bg-blue-800">保存</button>
+                </form>
+                <p id="displayNameMessage" class="mt-2 text-sm"></p>
+            </section>
+
+            <section class="paper-card bg-white p-8 rounded-sm border-l-4 border-blue-200">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold text-blue-900">♡ お気に入りの曲</h2>
+                    <span id="favoriteCount" class="text-xs text-gray-400"></span>
+                </div>
+                <ul id="favoriteList" class="space-y-2"></ul>
+                <p id="favoriteEmpty" class="text-sm text-gray-400 hidden">まだお気に入りの曲はありません。セットリストページの♡ボタンから追加できます。</p>
+            </section>
+
+            <section class="paper-card bg-white p-8 rounded-sm border-l-4 border-blue-200">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold text-blue-900">🎤 行ったライブの記録</h2>
+                    <span id="attendedCount" class="text-xs text-gray-400"></span>
+                </div>
+                <ul id="attendedList" class="space-y-2"></ul>
+                <p id="attendedEmpty" class="text-sm text-gray-400 hidden">まだ参加記録はありません。一覧ページの「参加した」ボタンから追加できます。</p>
+            </section>
+
+            <section class="paper-card bg-white p-8 rounded-sm border-l-4 border-blue-200">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold text-blue-900">🎵 マイセトリ</h2>
+                    <button id="newSetlistBtn" type="button" class="text-sm bg-blue-700 text-white px-3 py-1 rounded font-bold hover:bg-blue-800">＋新規作成</button>
+                </div>
+                <ul id="setlistList" class="space-y-3"></ul>
+                <p id="setlistEmpty" class="text-sm text-gray-400 hidden">まだマイセトリはありません。「＋新規作成」から作れます。</p>
+                <datalist id="catalogSongList"></datalist>
+            </section>
+
+            <div class="text-center">
+                <button id="logoutBtn" type="button" class="text-gray-400 text-sm hover:text-gray-600 underline">ログアウト</button>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <a href="index.html" class="text-gray-500 text-sm hover:underline">&laquo; 一覧に戻る</a>
+        </div>
+    </main>
+
+    <script>
+    (function () {
+        const notLoggedIn = document.getElementById('notLoggedIn');
+        const loggedInContent = document.getElementById('loggedInContent');
+        const userEmailLabel = document.getElementById('userEmailLabel');
+        const displayNameForm = document.getElementById('displayNameForm');
+        const displayNameInput = document.getElementById('displayNameInput');
+        const displayNameSaveBtn = document.getElementById('displayNameSaveBtn');
+        const displayNameMessage = document.getElementById('displayNameMessage');
+        const favoriteList = document.getElementById('favoriteList');
+        const favoriteEmpty = document.getElementById('favoriteEmpty');
+        const favoriteCount = document.getElementById('favoriteCount');
+        const attendedList = document.getElementById('attendedList');
+        const attendedEmpty = document.getElementById('attendedEmpty');
+        const attendedCount = document.getElementById('attendedCount');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const newSetlistBtn = document.getElementById('newSetlistBtn');
+        const setlistList = document.getElementById('setlistList');
+        const setlistEmpty = document.getElementById('setlistEmpty');
+        const catalogSongList = document.getElementById('catalogSongList');
+
+        let currentUserId = null;
+        let catalogPromise = null; // 全曲カタログは初回の編集操作時に一度だけ読み込む
+        const openEditors = new Set(); // 現在開いている編集パネルのセトリID
+
+        function getCatalog() {
+            if (!catalogPromise) {
+                catalogPromise = buildSongCatalog().then(catalog => {
+                    catalogSongList.innerHTML = catalog
+                        .map(s => `<option value="${s.title.replace(/"/g, '&quot;')}"></option>`)
+                        .join('');
+                    return catalog;
+                });
+            }
+            return catalogPromise;
+        }
+
+        function formatLiveId(id) {
+            const m = /^(\d{4})(\d{2})(\d{2})$/.exec(id);
+            if (!m) return id;
+            return `${m[1]}年${parseInt(m[2], 10)}月${parseInt(m[3], 10)}日`;
+        }
+
+        async function loadFavorites(userId) {
+            const { data, error } = await window.sb
+                .from('favorites')
+                .select('song_title')
+                .eq('user_id', userId)
+                .order('song_title', { ascending: true });
+
+            favoriteList.innerHTML = '';
+            if (error) console.error('favorites fetch failed:', error);
+            if (error || !data || data.length === 0) {
+                favoriteEmpty.textContent = error
+                    ? '読み込みに失敗しました：' + error.message
+                    : 'まだお気に入りの曲はありません。セットリストページの♡ボタンから追加できます。';
+                favoriteEmpty.classList.remove('hidden');
+                favoriteCount.textContent = '';
+                return;
+            }
+            favoriteEmpty.classList.add('hidden');
+            favoriteCount.textContent = `${data.length}曲`;
+
+            data.forEach(row => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-lg';
+                li.innerHTML = `
+                    <a href="index.html?song=${encodeURIComponent(row.song_title)}" class="text-gray-700 font-medium hover:text-blue-700">${row.song_title}</a>
+                    <button class="remove-fav text-gray-300 hover:text-red-500 text-sm" title="お気に入りから削除">✕</button>
+                `;
+                li.querySelector('.remove-fav').addEventListener('click', async () => {
+                    await window.sb.from('favorites').delete().eq('user_id', userId).eq('song_title', row.song_title);
+                    loadFavorites(userId);
+                });
+                favoriteList.appendChild(li);
+            });
+        }
+
+        async function loadAttended(userId) {
+            const { data, error } = await window.sb
+                .from('attended_lives')
+                .select('live_id, created_at')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false });
+
+            attendedList.innerHTML = '';
+            if (error) console.error('attended_lives fetch failed:', error);
+            if (error || !data || data.length === 0) {
+                attendedEmpty.textContent = error
+                    ? '読み込みに失敗しました：' + error.message
+                    : 'まだ参加記録はありません。一覧ページの「参加した」ボタンから追加できます。';
+                attendedEmpty.classList.remove('hidden');
+                attendedCount.textContent = '';
+                return;
+            }
+            attendedEmpty.classList.add('hidden');
+            attendedCount.textContent = `${data.length}件`;
+
+            for (const row of data) {
+                const liveId = row.live_id;
+                let title = liveId;
+                try {
+                    const res = await fetch(`data/${liveId}.json`, { cache: 'no-store' });
+                    if (res.ok) {
+                        const json = await res.json();
+                        title = json.title || liveId;
+                    }
+                } catch (e) { /* データが見つからない場合はIDのまま表示 */ }
+
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-lg';
+                li.innerHTML = `
+                    <a href="player.html?id=${liveId}" class="text-gray-700 hover:text-blue-700">
+                        <span class="font-medium">${title}</span>
+                        <span class="block text-xs text-gray-400">${formatLiveId(liveId)}</span>
+                    </a>
+                    <button class="remove-attend text-gray-300 hover:text-red-500 text-sm" title="参加記録を削除">✕</button>
+                `;
+                li.querySelector('.remove-attend').addEventListener('click', async () => {
+                    await window.sb.from('attended_lives').delete().eq('user_id', userId).eq('live_id', liveId);
+                    loadAttended(userId);
+                });
+                attendedList.appendChild(li);
+            }
+        }
+
+        // ---- ここからマイセトリ ----
+        async function loadSetlists(userId) {
+            const { data, error } = await window.sb
+                .from('custom_setlists')
+                .select('id, name, created_at')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: true });
+
+            setlistList.innerHTML = '';
+            if (error) console.error('custom_setlists fetch failed:', error);
+            if (error || !data || data.length === 0) {
+                setlistEmpty.textContent = error
+                    ? '読み込みに失敗しました：' + error.message
+                    : 'まだマイセトリはありません。「＋新規作成」から作れます。';
+                setlistEmpty.classList.remove('hidden');
+                return;
+            }
+            setlistEmpty.classList.add('hidden');
+
+            for (const setlist of data) {
+                const li = document.createElement('li');
+                li.className = 'border border-gray-100 rounded-lg overflow-hidden';
+                li.dataset.setlistId = setlist.id;
+
+                const { count } = await window.sb
+                    .from('custom_setlist_items')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('setlist_id', setlist.id);
+
+                li.innerHTML = `
+                    <div class="flex items-center justify-between p-3 bg-gray-50">
+                        <div>
+                            <span class="font-medium text-gray-700 setlist-name">${setlist.name}</span>
+                            <span class="text-xs text-gray-400 ml-2">${count || 0}曲</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-sm">
+                            <a href="myplayer.html?setlist=${setlist.id}" class="text-blue-700 hover:underline font-bold">▶ 再生</a>
+                            <button class="edit-setlist-btn text-gray-500 hover:text-blue-700">編集</button>
+                            <button class="rename-setlist-btn text-gray-400 hover:text-gray-600">名前変更</button>
+                            <button class="delete-setlist-btn text-gray-300 hover:text-red-500">✕</button>
+                        </div>
+                    </div>
+                    <div class="setlist-editor hidden p-4 border-t border-gray-100 bg-white space-y-3"></div>
+                `;
+
+                li.querySelector('.delete-setlist-btn').addEventListener('click', async () => {
+                    if (!confirm(`「${setlist.name}」を削除しますか？`)) return;
+                    await window.sb.from('custom_setlists').delete().eq('id', setlist.id).eq('user_id', userId);
+                    loadSetlists(userId);
+                });
+
+                li.querySelector('.rename-setlist-btn').addEventListener('click', async () => {
+                    const newName = prompt('新しい名前を入力してください', setlist.name);
+                    if (!newName || !newName.trim()) return;
+                    await window.sb.from('custom_setlists').update({ name: newName.trim() }).eq('id', setlist.id).eq('user_id', userId);
+                    loadSetlists(userId);
+                });
+
+                li.querySelector('.edit-setlist-btn').addEventListener('click', () => {
+                    const editor = li.querySelector('.setlist-editor');
+                    const isHidden = editor.classList.contains('hidden');
+                    if (isHidden) {
+                        editor.classList.remove('hidden');
+                        openEditors.add(setlist.id);
+                        renderSetlistEditor(editor, setlist.id, userId);
+                    } else {
+                        editor.classList.add('hidden');
+                        openEditors.delete(setlist.id);
+                    }
+                });
+
+                setlistList.appendChild(li);
+
+                // 前回開いていた編集パネルは再読み込み後も開いたままにする
+                if (openEditors.has(setlist.id)) {
+                    const editor = li.querySelector('.setlist-editor');
+                    editor.classList.remove('hidden');
+                    renderSetlistEditor(editor, setlist.id, userId);
+                }
+            }
+        }
+
+        async function renderSetlistEditor(editorEl, setlistId, userId) {
+            editorEl.innerHTML = `
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="text" list="catalogSongList" placeholder="曲名で検索して追加"
+                        class="add-song-input flex-1 border border-gray-300 rounded px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    <button type="button" class="add-song-btn bg-blue-700 text-white px-3 py-2 rounded text-sm font-bold hover:bg-blue-800">追加</button>
+                </div>
+                <p class="add-song-message text-xs text-gray-400"></p>
+                <ul class="setlist-items space-y-2"></ul>
+            `;
+            getCatalog();
+
+            const input = editorEl.querySelector('.add-song-input');
+            const addBtn = editorEl.querySelector('.add-song-btn');
+            const message = editorEl.querySelector('.add-song-message');
+
+            addBtn.addEventListener('click', async () => {
+                const title = input.value.trim();
+                if (!title) return;
+                const catalog = await getCatalog();
+                const match = catalog.find(s => dedupeKey(s.title) === dedupeKey(title));
+                if (!match) {
+                    message.textContent = 'その曲名は見つかりませんでした。候補から選んでください。';
+                    message.className = 'add-song-message text-xs text-red-500';
+                    return;
+                }
+                const { data: existingItems } = await window.sb
+                    .from('custom_setlist_items')
+                    .select('position')
+                    .eq('setlist_id', setlistId)
+                    .order('position', { ascending: false })
+                    .limit(1);
+                const nextPosition = existingItems && existingItems.length > 0 ? existingItems[0].position + 1 : 0;
+
+                const { error } = await window.sb.from('custom_setlist_items').insert({
+                    setlist_id: setlistId,
+                    user_id: userId,
+                    song_title: match.title,
+                    video_id: match.videoId,
+                    position: nextPosition
+                });
+                if (error) {
+                    message.textContent = '追加に失敗しました：' + error.message;
+                    message.className = 'add-song-message text-xs text-red-500';
+                    return;
+                }
+                input.value = '';
+                message.textContent = '';
+                loadSetlistItems(editorEl, setlistId, userId);
+                loadSetlists(userId); // 曲数の表示を更新
+            });
+
+            loadSetlistItems(editorEl, setlistId, userId);
+        }
+
+        async function loadSetlistItems(editorEl, setlistId, userId) {
+            const itemsEl = editorEl.querySelector('.setlist-items');
+            const { data, error } = await window.sb
+                .from('custom_setlist_items')
+                .select('id, song_title, video_id, position')
+                .eq('setlist_id', setlistId)
+                .order('position', { ascending: true });
+
+            if (error) {
+                itemsEl.innerHTML = `<li class="text-xs text-red-500">読み込みに失敗しました：${error.message}</li>`;
+                return;
+            }
+            if (!data || data.length === 0) {
+                itemsEl.innerHTML = `<li class="text-xs text-gray-400">まだ曲がありません。上の検索から追加してください。</li>`;
+                return;
+            }
+
+            itemsEl.innerHTML = '';
+            data.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between p-2 bg-gray-50 border border-gray-100 rounded';
+                li.innerHTML = `
+                    <span class="text-sm text-gray-700">${index + 1}. ${item.song_title}</span>
+                    <span class="flex items-center gap-1">
+                        <button class="move-up-btn text-gray-400 hover:text-blue-600 text-xs px-1" ${index === 0 ? 'disabled' : ''}>▲</button>
+                        <button class="move-down-btn text-gray-400 hover:text-blue-600 text-xs px-1" ${index === data.length - 1 ? 'disabled' : ''}>▼</button>
+                        <button class="remove-item-btn text-gray-300 hover:text-red-500 text-xs px-1">✕</button>
+                    </span>
+                `;
+
+                li.querySelector('.remove-item-btn').addEventListener('click', async () => {
+                    await window.sb.from('custom_setlist_items').delete().eq('id', item.id).eq('user_id', userId);
+                    loadSetlistItems(editorEl, setlistId, userId);
+                    loadSetlists(userId);
+                });
+
+                li.querySelector('.move-up-btn').addEventListener('click', async () => {
+                    if (index === 0) return;
+                    await swapPositions(data[index], data[index - 1]);
+                    loadSetlistItems(editorEl, setlistId, userId);
+                });
+
+                li.querySelector('.move-down-btn').addEventListener('click', async () => {
+                    if (index === data.length - 1) return;
+                    await swapPositions(data[index], data[index + 1]);
+                    loadSetlistItems(editorEl, setlistId, userId);
+                });
+
+                itemsEl.appendChild(li);
+            });
+        }
+
+        async function swapPositions(itemA, itemB) {
+            await window.sb.from('custom_setlist_items').update({ position: itemB.position }).eq('id', itemA.id);
+            await window.sb.from('custom_setlist_items').update({ position: itemA.position }).eq('id', itemB.id);
+        }
+
+        if (newSetlistBtn) {
+            newSetlistBtn.addEventListener('click', async () => {
+                if (!currentUserId) return;
+                const name = prompt('セトリの名前を入力してください（例：バラード集）');
+                if (!name || !name.trim()) return;
+                const { error } = await window.sb.from('custom_setlists').insert({ user_id: currentUserId, name: name.trim() });
+                if (error) {
+                    alert('作成に失敗しました：' + error.message);
+                    return;
+                }
+                loadSetlists(currentUserId);
+            });
+        }
+
+        async function init() {
+            if (!window.sb) return;
+            const { data: { session } } = await window.sb.auth.getSession();
+            if (!session) {
+                notLoggedIn.classList.remove('hidden');
+                loggedInContent.classList.add('hidden');
+                return;
+            }
+            notLoggedIn.classList.add('hidden');
+            loggedInContent.classList.remove('hidden');
+            currentUserId = session.user.id;
+            const displayName = session.user.user_metadata && session.user.user_metadata.display_name;
+            userEmailLabel.textContent = displayName ? `${displayName}（${session.user.email}）` : session.user.email;
+            displayNameInput.value = displayName || '';
+            loadFavorites(session.user.id);
+            loadAttended(session.user.id);
+            loadSetlists(session.user.id);
+        }
+
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                await window.sb.auth.signOut();
+                window.location.href = 'index.html';
+            });
+        }
+
+        if (displayNameForm) {
+            displayNameForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!window.sb) return;
+                const name = displayNameInput.value.trim();
+                displayNameSaveBtn.disabled = true;
+                displayNameMessage.textContent = '保存中…';
+                displayNameMessage.className = 'mt-2 text-sm text-gray-500';
+                const { error } = await window.sb.auth.updateUser({ data: { display_name: name } });
+                displayNameSaveBtn.disabled = false;
+                if (error) {
+                    displayNameMessage.textContent = '保存に失敗しました：' + error.message;
+                    displayNameMessage.className = 'mt-2 text-sm text-red-600';
+                } else {
+                    displayNameMessage.textContent = '保存しました。';
+                    displayNameMessage.className = 'mt-2 text-sm text-green-700';
+                    init();
+                }
+            });
+        }
+
+        init();
+        if (window.sb) {
+            window.sb.auth.onAuthStateChange(() => init());
+        }
+    })();
+    </script>
+</body>
+</html>

@@ -6,6 +6,9 @@
     <title>Live Player</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabaseClient.js"></script>
+    <script src="js/songUtils.js"></script>
 </head>
 <body class="bg-[#f7f3e9] p-4 md:p-8"> <div class="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-lg">
         
@@ -143,23 +146,93 @@ function onYouTubeIframeAPIReady() {
                     songsData.forEach((track, index) => {
                         const li = document.createElement('li');
                         li.className = "p-3 bg-white border border-gray-100 rounded-lg shadow-sm flex justify-between items-center cursor-pointer hover:bg-blue-50 transition duration-200";
-                        
+
+                        const songKey = normalizeTitle(track.title || '');
                         li.innerHTML = `
                             <span class="text-gray-700 font-medium">${track.title}</span>
-                            <button class="bg-blue-600 text-white text-[10px] px-3 py-1 rounded-full uppercase tracking-tighter">再生</button>
+                            <span class="flex items-center gap-2">
+                                <button class="fav-btn text-lg leading-none text-gray-300 hover:text-pink-400" title="お気に入り" data-song="${songKey.replace(/"/g, '&quot;')}">♡</button>
+                                <button class="bg-blue-600 text-white text-[10px] px-3 py-1 rounded-full uppercase tracking-tighter">再生</button>
+                            </span>
                         `;
 
                         li.onclick = () => {
                             currentTrackIndex = index;
                             playSelectedTrack();
                         };
+
+                        const favBtn = li.querySelector('.fav-btn');
+                        favBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            toggleFavorite(songKey, favBtn);
+                        });
+
                         list.appendChild(li);
                     });
+
+                    refreshFavoriteButtons();
                 })
                 .catch(err => {
                     console.error("Error:", err);
                     document.getElementById('live-title').innerText = "データが見つかりません";
                 });
+        }
+
+        // ---- ここからお気に入り機能（Supabase） ----
+        function setFavButtonState(btn, active) {
+            btn.dataset.active = active ? 'true' : 'false';
+            btn.textContent = active ? '♥' : '♡';
+            btn.className = active
+                ? 'fav-btn text-lg leading-none text-pink-500'
+                : 'fav-btn text-lg leading-none text-gray-300 hover:text-pink-400';
+        }
+
+        async function toggleFavorite(songKey, btn) {
+            if (!window.sb) return;
+            const { data: { session } } = await window.sb.auth.getSession();
+            if (!session) {
+                if (confirm('ログインするとお気に入りに追加できます。ログインページへ移動しますか？')) {
+                    window.location.href = 'login.html';
+                }
+                return;
+            }
+            const active = btn.dataset.active === 'true';
+            btn.disabled = true;
+            try {
+                if (active) {
+                    const { error } = await window.sb.from('favorites').delete()
+                        .eq('user_id', session.user.id).eq('song_title', songKey);
+                    if (error) throw error;
+                    setFavButtonState(btn, false);
+                } else {
+                    const { error } = await window.sb.from('favorites').insert({ user_id: session.user.id, song_title: songKey });
+                    if (error) throw error;
+                    setFavButtonState(btn, true);
+                }
+            } catch (e) {
+                console.error('favorites update failed:', e);
+                alert('更新に失敗しました：' + (e.message || e));
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function refreshFavoriteButtons() {
+            if (!window.sb) return;
+            const { data: { session } } = await window.sb.auth.getSession();
+            const buttons = document.querySelectorAll('.fav-btn');
+            if (!session) {
+                buttons.forEach(btn => setFavButtonState(btn, false));
+                return;
+            }
+            const { data, error } = await window.sb.from('favorites').select('song_title').eq('user_id', session.user.id);
+            if (error) console.error('favorites fetch failed:', error);
+            const favSet = new Set((data || []).map(r => r.song_title));
+            buttons.forEach(btn => setFavButtonState(btn, favSet.has(btn.dataset.song)));
+        }
+
+        if (window.sb) {
+            window.sb.auth.onAuthStateChange(() => refreshFavoriteButtons());
         }
     </script>
 </body>

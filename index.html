@@ -6,6 +6,9 @@
     <title>Mikuni Shimokawa Live Archive</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sawarabi+Mincho&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabaseClient.js"></script>
+    <script src="js/songUtils.js"></script>
     <style>
         body {
             font-family: 'Sawarabi+Mincho', serif;
@@ -25,7 +28,7 @@
 <body class="p-6 md:p-12">
 
     <header class="relative mb-16 border-b-2 border-gray-800 pb-8">
-        <div class="flex justify-center md:justify-end mb-6 md:mb-0 md:absolute md:top-0 md:right-0">
+        <div class="flex flex-col items-center md:items-end gap-2 mb-6 md:mb-0 md:absolute md:top-0 md:right-0">
             <div class="flex items-center gap-2">
                 <input id="songSearchInput" type="text" list="songTitleList"
                     placeholder="曲名で絞り込み"
@@ -34,11 +37,12 @@
                 <button id="songSearchBtn" type="button" class="bg-blue-700 text-white px-3 py-1 rounded text-sm font-bold hover:bg-blue-800">検索</button>
                 <button id="songSearchClearBtn" type="button" class="text-gray-400 text-sm hover:text-gray-600">✕</button>
             </div>
+            <div id="authArea" class="text-sm"></div>
         </div>
         <div class="text-center">
             <h1 class="text-3xl md:text-4xl font-bold text-gray-800 tracking-widest">
                 ♪ Live Archive Log</h1>
-            <p class="mt-4 text-gray-60 italic">あの日の音、あの時の言葉を辿る。</p>
+            <p class="mt-4 text-gray-600 italic">あの日の音、あの時の言葉を辿る。</p>
             <p id="songSearchStatus" class="mt-3 text-xs text-gray-400"></p>
         </div>
     </header>
@@ -616,12 +620,15 @@
             }
         });
 
-        // 「1. 曲名」→「曲名」のように先頭の番号を除去
-        const normalize = (title) => title.replace(/^\s*\d+[\.\)、]\s*/, '').trim();
+        // normalizeTitle / dedupeKey は js/songUtils.js で定義（player.html / mypage.html と共通）
 
-        // 曲名（正規化後） -> ライブIDのSet
-        const songIndex = new Map();
+        // 比較キー -> { 表記ゆれごとの出現回数, ライブIDのSet }
+        const variantCounts = new Map();
+        const idsByKey = new Map();
         const ids = sections.map(s => s.dataset.liveId).filter(Boolean);
+
+        // 曲名（代表表記） -> ライブIDのSet（読み込み完了後に確定）
+        const songIndex = new Map();
 
         Promise.all(ids.map(id =>
             fetch(`data/${id}.json`, { cache: 'no-store' })
@@ -630,32 +637,57 @@
                 .then(data => {
                     if (!data || !Array.isArray(data.tracks)) return;
                     data.tracks.forEach(track => {
-                        const name = normalize(track.title || '');
+                        const name = normalizeTitle(track.title || '');
                         if (!name) return;
-                        if (!songIndex.has(name)) songIndex.set(name, new Set());
-                        songIndex.get(name).add(id);
+                        const key = dedupeKey(name);
+                        if (!variantCounts.has(key)) variantCounts.set(key, new Map());
+                        const vc = variantCounts.get(key);
+                        vc.set(name, (vc.get(name) || 0) + 1);
+                        if (!idsByKey.has(key)) idsByKey.set(key, new Set());
+                        idsByKey.get(key).add(id);
                     });
                 })
         )).then(() => {
+            // 表記ゆれごとに一番よく使われている表記を代表ラベルに採用
+            variantCounts.forEach((variants, key) => {
+                let bestLabel = null;
+                let bestCount = -1;
+                variants.forEach((count, label) => {
+                    if (count > bestCount || (count === bestCount && bestLabel !== null && label.localeCompare(bestLabel, 'ja') < 0)) {
+                        bestCount = count;
+                        bestLabel = label;
+                    }
+                });
+                songIndex.set(bestLabel, idsByKey.get(key));
+            });
+
             const titles = Array.from(songIndex.keys()).sort((a, b) => a.localeCompare(b, 'ja'));
             datalist.innerHTML = titles.map(t => `<option value="${t.replace(/"/g, '&quot;')}"></option>`).join('');
-            statusEl.textContent = `${titles.length}曲のデータを読み込みました。曲名を入力して絞り込めます。`;
+            statusEl.textContent = '';
+
+            // マイページなどから ?song=曲名 で来た場合は自動で絞り込む
+            const presetSong = new URLSearchParams(window.location.search).get('song');
+            if (presetSong) {
+                input.value = presetSong;
+                applyFilter(presetSong);
+            }
         });
 
         function resetView() {
             sections.forEach(sec => { sec.style.display = ''; });
-            statusEl.textContent = `${songIndex.size}曲のデータを読み込みました。曲名を入力して絞り込めます。`;
+            statusEl.textContent = '';
         }
 
         function applyFilter(query) {
             const q = query.trim();
             if (!q) { resetView(); return; }
+            const qKey = dedupeKey(q);
 
-            // 完全一致を優先
+            // 完全一致を優先（表記ゆれは無視）
             let matchIds = null;
             let matchedLabel = null;
             for (const [title, idSet] of songIndex.entries()) {
-                if (title === q) { matchIds = idSet; matchedLabel = title; break; }
+                if (dedupeKey(title) === qKey) { matchIds = idSet; matchedLabel = title; break; }
             }
 
             // 完全一致がなければ部分一致で複数曲をまとめる
@@ -663,7 +695,7 @@
                 const merged = new Set();
                 const matchedTitles = [];
                 for (const [title, idSet] of songIndex.entries()) {
-                    if (title.includes(q)) {
+                    if (dedupeKey(title).includes(qKey)) {
                         idSet.forEach(id => merged.add(id));
                         matchedTitles.push(title);
                     }
@@ -689,6 +721,112 @@
         searchBtn.addEventListener('click', () => applyFilter(input.value));
         input.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyFilter(input.value); });
         clearBtn.addEventListener('click', () => { input.value = ''; resetView(); });
+
+        // ---- ここからログイン状態表示・参加ボタン（Supabase） ----
+        const authArea = document.getElementById('authArea');
+
+        function renderAuthArea(session) {
+            if (!authArea) return;
+            if (session) {
+                const displayName = session.user.user_metadata && session.user.user_metadata.display_name;
+                authArea.innerHTML = `
+                    <span class="text-gray-500">${displayName || session.user.email}</span>
+                    <a href="mypage.html" class="text-blue-700 hover:underline font-bold ml-2">マイページ</a>
+                    <button id="logoutBtn" type="button" class="text-gray-400 hover:text-gray-600 ml-2">ログアウト</button>
+                `;
+                const logoutBtn = document.getElementById('logoutBtn');
+                if (logoutBtn) logoutBtn.addEventListener('click', () => window.sb.auth.signOut());
+            } else {
+                authArea.innerHTML = `<a href="login.html" class="text-blue-700 hover:underline font-bold">ログイン</a>`;
+            }
+        }
+
+        function setAttendButtonState(btn, attended) {
+            btn.dataset.attended = attended ? 'true' : 'false';
+            if (attended) {
+                btn.textContent = '✅ 参加済み';
+                btn.className = 'attend-btn text-xs px-3 py-1 rounded-full border border-blue-500 bg-blue-50 text-blue-700';
+            } else {
+                btn.textContent = '🎤 参加した';
+                btn.className = 'attend-btn text-xs px-3 py-1 rounded-full border border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600';
+            }
+        }
+
+        function ensureAttendButtons() {
+            sections.forEach(sec => {
+                const liveId = sec.dataset.liveId;
+                if (!liveId) return;
+                const actionDiv = sec.querySelector('.mt-6.flex.justify-end');
+                if (!actionDiv || actionDiv.querySelector('.attend-btn')) return;
+                actionDiv.classList.remove('justify-end');
+                actionDiv.classList.add('justify-between', 'items-center');
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                setAttendButtonState(btn, false);
+                btn.addEventListener('click', () => toggleAttendance(liveId, btn));
+                actionDiv.insertBefore(btn, actionDiv.firstChild);
+            });
+        }
+
+        async function toggleAttendance(liveId, btn) {
+            if (!window.sb) return;
+            const { data: { session } } = await window.sb.auth.getSession();
+            if (!session) {
+                if (confirm('ログインすると参加記録を残せます。ログインページへ移動しますか？')) {
+                    window.location.href = 'login.html';
+                }
+                return;
+            }
+            const attended = btn.dataset.attended === 'true';
+            btn.disabled = true;
+            try {
+                if (attended) {
+                    const { error } = await window.sb.from('attended_lives').delete()
+                        .eq('user_id', session.user.id).eq('live_id', liveId);
+                    if (error) throw error;
+                    setAttendButtonState(btn, false);
+                } else {
+                    const { error } = await window.sb.from('attended_lives').insert({ user_id: session.user.id, live_id: liveId });
+                    if (error) throw error;
+                    setAttendButtonState(btn, true);
+                }
+            } catch (e) {
+                console.error('attended_lives update failed:', e);
+                alert('更新に失敗しました：' + (e.message || e));
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function refreshAttendButtons(session) {
+            ensureAttendButtons();
+            const buttons = document.querySelectorAll('.attend-btn');
+            if (!session) {
+                buttons.forEach(btn => setAttendButtonState(btn, false));
+                return;
+            }
+            const { data, error } = await window.sb.from('attended_lives').select('live_id').eq('user_id', session.user.id);
+            if (error) console.error('attended_lives fetch failed:', error);
+            const attendedSet = new Set((data || []).map(r => r.live_id));
+            buttons.forEach(btn => {
+                const liveId = btn.closest('section').dataset.liveId;
+                setAttendButtonState(btn, attendedSet.has(liveId));
+            });
+        }
+
+        async function initAuth() {
+            if (!window.sb) { ensureAttendButtons(); return; }
+            const { data: { session } } = await window.sb.auth.getSession();
+            renderAuthArea(session);
+            refreshAttendButtons(session);
+            window.sb.auth.onAuthStateChange((_event, newSession) => {
+                renderAuthArea(newSession);
+                refreshAttendButtons(newSession);
+            });
+        }
+
+        initAuth();
     })();
     </script>
 
