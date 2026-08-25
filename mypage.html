@@ -130,13 +130,19 @@
             return `${m[1]}年${parseInt(m[2], 10)}月${parseInt(m[3], 10)}日`;
         }
 
-        async function loadFavorites(userId) {
+        // init()は「現在のセッション確認」と「ログイン状態変化の監視」の両方から呼ばれるため、
+        // ほぼ同時に2回実行されることがある。1件ずつawaitしながらリストに追加する処理（loadAttended等）は
+        // そのままだと2回分が両方とも表示されてしまうため、世代(generation)番号で古い呼び出しを無効化する。
+        let loadGeneration = 0;
+
+        async function loadFavorites(userId, gen) {
             const { data, error } = await window.sb
                 .from('favorites')
                 .select('song_title')
                 .eq('user_id', userId)
                 .order('song_title', { ascending: true });
 
+            if (gen !== loadGeneration) return; // 途中で新しい読み込みが始まっていたら破棄
             favoriteList.innerHTML = '';
             if (error) console.error('favorites fetch failed:', error);
             if (error || !data || data.length === 0) {
@@ -159,19 +165,20 @@
                 `;
                 li.querySelector('.remove-fav').addEventListener('click', async () => {
                     await window.sb.from('favorites').delete().eq('user_id', userId).eq('song_title', row.song_title);
-                    loadFavorites(userId);
+                    loadFavorites(userId, loadGeneration);
                 });
                 favoriteList.appendChild(li);
             });
         }
 
-        async function loadAttended(userId) {
+        async function loadAttended(userId, gen) {
             const { data, error } = await window.sb
                 .from('attended_lives')
                 .select('live_id, created_at')
                 .eq('user_id', userId)
                 .order('created_at', { ascending: false });
 
+            if (gen !== loadGeneration) return; // 途中で新しい読み込みが始まっていたら破棄
             attendedList.innerHTML = '';
             if (error) console.error('attended_lives fetch failed:', error);
             if (error || !data || data.length === 0) {
@@ -186,6 +193,7 @@
             attendedCount.textContent = `${data.length}件`;
 
             for (const row of data) {
+                if (gen !== loadGeneration) return; // ループの途中で新しい読み込みが始まったら中断
                 const liveId = row.live_id;
                 let title = liveId;
                 try {
@@ -196,6 +204,7 @@
                     }
                 } catch (e) { /* データが見つからない場合はIDのまま表示 */ }
 
+                if (gen !== loadGeneration) return;
                 const li = document.createElement('li');
                 li.className = 'flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-lg';
                 li.innerHTML = `
@@ -207,20 +216,21 @@
                 `;
                 li.querySelector('.remove-attend').addEventListener('click', async () => {
                     await window.sb.from('attended_lives').delete().eq('user_id', userId).eq('live_id', liveId);
-                    loadAttended(userId);
+                    loadAttended(userId, loadGeneration);
                 });
                 attendedList.appendChild(li);
             }
         }
 
         // ---- ここからマイセトリ ----
-        async function loadSetlists(userId) {
+        async function loadSetlists(userId, gen) {
             const { data, error } = await window.sb
                 .from('custom_setlists')
                 .select('id, name, created_at')
                 .eq('user_id', userId)
                 .order('created_at', { ascending: true });
 
+            if (gen !== loadGeneration) return; // 途中で新しい読み込みが始まっていたら破棄
             setlistList.innerHTML = '';
             if (error) console.error('custom_setlists fetch failed:', error);
             if (error || !data || data.length === 0) {
@@ -233,6 +243,7 @@
             setlistEmpty.classList.add('hidden');
 
             for (const setlist of data) {
+                if (gen !== loadGeneration) return; // ループの途中で新しい読み込みが始まったら中断
                 const li = document.createElement('li');
                 li.className = 'border border-gray-100 rounded-lg overflow-hidden';
                 li.dataset.setlistId = setlist.id;
@@ -242,6 +253,7 @@
                     .select('id', { count: 'exact', head: true })
                     .eq('setlist_id', setlist.id);
 
+                if (gen !== loadGeneration) return;
                 li.innerHTML = `
                     <div class="flex items-center justify-between p-3 bg-gray-50">
                         <div>
@@ -261,14 +273,14 @@
                 li.querySelector('.delete-setlist-btn').addEventListener('click', async () => {
                     if (!confirm(`「${setlist.name}」を削除しますか？`)) return;
                     await window.sb.from('custom_setlists').delete().eq('id', setlist.id).eq('user_id', userId);
-                    loadSetlists(userId);
+                    loadSetlists(userId, loadGeneration);
                 });
 
                 li.querySelector('.rename-setlist-btn').addEventListener('click', async () => {
                     const newName = prompt('新しい名前を入力してください', setlist.name);
                     if (!newName || !newName.trim()) return;
                     await window.sb.from('custom_setlists').update({ name: newName.trim() }).eq('id', setlist.id).eq('user_id', userId);
-                    loadSetlists(userId);
+                    loadSetlists(userId, loadGeneration);
                 });
 
                 li.querySelector('.edit-setlist-btn').addEventListener('click', () => {
@@ -344,7 +356,7 @@
                 input.value = '';
                 message.textContent = '';
                 loadSetlistItems(editorEl, setlistId, userId);
-                loadSetlists(userId); // 曲数の表示を更新
+                loadSetlists(userId, loadGeneration); // 曲数の表示を更新
             });
 
             loadSetlistItems(editorEl, setlistId, userId);
@@ -383,7 +395,7 @@
                 li.querySelector('.remove-item-btn').addEventListener('click', async () => {
                     await window.sb.from('custom_setlist_items').delete().eq('id', item.id).eq('user_id', userId);
                     loadSetlistItems(editorEl, setlistId, userId);
-                    loadSetlists(userId);
+                    loadSetlists(userId, loadGeneration);
                 });
 
                 li.querySelector('.move-up-btn').addEventListener('click', async () => {
@@ -417,13 +429,16 @@
                     alert('作成に失敗しました：' + error.message);
                     return;
                 }
-                loadSetlists(currentUserId);
+                loadSetlists(currentUserId, loadGeneration);
             });
         }
 
         async function init() {
             if (!window.sb) return;
+            loadGeneration++;
+            const gen = loadGeneration;
             const { data: { session } } = await window.sb.auth.getSession();
+            if (gen !== loadGeneration) return; // 呼び出し中に新しいinit()が始まっていたら何もしない
             if (!session) {
                 notLoggedIn.classList.remove('hidden');
                 loggedInContent.classList.add('hidden');
@@ -435,9 +450,9 @@
             const displayName = session.user.user_metadata && session.user.user_metadata.display_name;
             userEmailLabel.textContent = displayName ? `${displayName}（${session.user.email}）` : session.user.email;
             displayNameInput.value = displayName || '';
-            loadFavorites(session.user.id);
-            loadAttended(session.user.id);
-            loadSetlists(session.user.id);
+            loadFavorites(session.user.id, gen);
+            loadAttended(session.user.id, gen);
+            loadSetlists(session.user.id, gen);
         }
 
         if (logoutBtn) {
