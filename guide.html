@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>使い方 | Live Archive Log</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sawarabi+Mincho&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Sawarabi+Mincho', serif;
+            background-color: #f7f3e9;
+        }
+        .paper-card {
+            box-shadow: 2px 4px 15px rgba(0,0,0,0.05);
+            background-image: linear-gradient(#e5e5e5 1px, transparent 1px);
+            background-size: 100% 2.5rem;
+            line-height: 2.5rem;
+        }
+        .paper-card p, .paper-card li {
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body class="p-6 md:p-12">
+
+    <header class="text-center mb-16 border-b-2 border-gray-800 pb-8">
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-800 tracking-widest">
+            📖 使い方
+        </h1>
+        <p class="mt-4 text-gray-600 italic">このサイトでできることをまとめました。</p>
+    </header>
+
+    <main class="max-w-3xl mx-auto space-y-12">
+
+        <section>
+            <div class="paper-card bg-white p-8 rounded-sm border-l-4 border-blue-200">
+                <h2 class="text-xl font-bold text-blue-900 mb-4">🎵 サイトでできること</h2>
+                <p class="text-sm text-gray-500 mb-4">ログインしなくても使えます。</p>
+                <ul class="text-gray-700 space-y-2 list-disc list-outside pl-5">
+                    <li>過去のワンマンライブのセットリストを確認できます。</li>
+                    <li>各公演のページで、セットリストの順番通りに再生できます。</li>
+                    <li>セットリストの好きな曲をクリックすると、その曲から直接再生できます。</li>
+                    <li>「次の曲へ」ボタンや「ランダム」再生もできます。</li>
+                    <li>ヘッダーの検索欄に曲名を入れると、その曲を歌った公演の一覧を絞り込んで表示できます。</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <div class="paper-card bg-white p-8 rounded-sm border-l-4 border-blue-200">
+                <h2 class="text-xl font-bold text-blue-900 mb-4">👤 マイページでできること</h2>
+                <p class="text-sm text-gray-500 mb-4">ログインすると使えるようになります。</p>
+                <ul class="text-gray-700 space-y-2 list-disc list-outside pl-5">
+                    <li>過去に参加した公演に「参加した」マークをつけられます（一覧ページの各カードから）。</li>
+                    <li>お気に入りの曲にマークをつけられます（各公演ページの♡ボタンから）。</li>
+                    <li>お気に入り曲をクリックすると、その曲を歌った公演の一覧にジャンプできます。</li>
+                    <li>自分だけのオリジナルのセットリスト（マイセトリ）を作れます。名前をつけて複数作成でき、曲の追加・並び替え・削除、名前の変更や削除もできます。</li>
+                    <li>作ったマイセトリは専用ページで再生でき、「次の曲へ」「ランダム再生」も使えます。</li>
+                    <li>マイページに表示される名前（表示名）を、メールアドレス以外の好きな名前に変更できます。</li>
+                    <li>参加記録やお気に入りは、一覧の✕ボタンからいつでも取り消せます。</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <div class="paper-card bg-white p-8 rounded-sm border-l-4 border-blue-200">
+                <h2 class="text-xl font-bold text-blue-900 mb-4">🔑 ログインについて</h2>
+                <ul class="text-gray-700 space-y-2 list-disc list-outside pl-5">
+                    <li>パスワードの設定は不要です。メールアドレスを入力すると届くリンクをクリックするだけでログインできます。</li>
+                    <li>同じメールアドレスでログインすれば、いつでも自分のマイページに戻れます。会員登録の手続きは特にありません。</li>
+                    <li>無料のメール送信の仕組みを使っているため、短時間に何人も同時にログインしようとすると、メールの送信エラーになることがあります。その場合は少し時間をおいてから、もう一度お試しください。</li>
+                </ul>
+            </div>
+        </section>
+
+        <div class="text-center">
+            <a href="index.html" class="text-gray-500 text-sm hover:underline">&laquo; 一覧に戻る</a>
+        </div>
+    </main>
+
+    <footer class="mt-20 text-center text-gray-400 text-xs">
+        &copy; 2026 Mika Archive Project.
+    </footer>
+
+</body>
+</html>
