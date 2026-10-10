@@ -448,7 +448,7 @@
             loggedInContent.classList.remove('hidden');
             currentUserId = session.user.id;
             const displayName = session.user.user_metadata && session.user.user_metadata.display_name;
-            userEmailLabel.textContent = displayName ? `${displayName}（${session.user.email}）` : session.user.email;
+            userEmailLabel.textContent = displayName || session.user.email;
             displayNameInput.value = displayName || '';
             loadFavorites(session.user.id, gen);
             loadAttended(session.user.id, gen);
