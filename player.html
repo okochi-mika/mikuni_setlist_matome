@@ -57,11 +57,13 @@ function onYouTubeIframeAPIReady() {
             .then(res => res.json())
             .then(data => {
                 songsData = data.tracks;
-                // ★ プレイヤーを作る時に、1曲目のID（songsData[0].id）を最初から渡す
+                // 音源のある最初の曲を初期表示にする
+                const firstIdx = songsData.findIndex(t => t.id);
+                currentTrackIndex = firstIdx >= 0 ? firstIdx : 0;
                 player = new YT.Player('player', {
                     height: '360',
                     width: '640',
-                    videoId: songsData[0].id, // 空ではなく最初の曲を入れる
+                    videoId: firstIdx >= 0 ? songsData[firstIdx].id : '',
                     playerVars: { 'playsinline': 1 },
                     events: { 
                         'onReady': onPlayerReady,
@@ -91,22 +93,24 @@ function onYouTubeIframeAPIReady() {
         // --- 再生コントロール ---
 
         function playNextSong() {
-            if (currentTrackIndex < songsData.length - 1) {
-                currentTrackIndex++;
-                playSelectedTrack();
-            } else {
-                currentTrackIndex = 0; // ループ再生
-                playSelectedTrack();
+            // 音源のない曲は飛ばして、次に再生できる曲へ（末尾まで行ったら先頭に戻る）
+            const n = songsData.length;
+            for (let step = 1; step <= n; step++) {
+                const idx = (currentTrackIndex + step) % n;
+                if (songsData[idx].id) {
+                    currentTrackIndex = idx;
+                    playSelectedTrack();
+                    return;
+                }
             }
         }
 
         function playRandomSong() {
-            let newIndex;
-            do {
-                newIndex = Math.floor(Math.random() * songsData.length);
-            } while (newIndex === currentTrackIndex && songsData.length > 1);
-            
-            currentTrackIndex = newIndex;
+            const candidates = songsData
+                .map((t, i) => (t.id ? i : -1))
+                .filter(i => i >= 0 && (i !== currentTrackIndex || songsData.filter(x => x.id).length === 1));
+            if (candidates.length === 0) return;
+            currentTrackIndex = candidates[Math.floor(Math.random() * candidates.length)];
             playSelectedTrack();
         }
 
@@ -145,21 +149,28 @@ function onYouTubeIframeAPIReady() {
 
                     songsData.forEach((track, index) => {
                         const li = document.createElement('li');
-                        li.className = "p-3 bg-white border border-gray-100 rounded-lg shadow-sm flex justify-between items-center cursor-pointer hover:bg-blue-50 transition duration-200";
+                        const hasAudio = !!track.id;
+                        li.className = "p-3 bg-white border border-gray-100 rounded-lg shadow-sm flex justify-between items-center transition duration-200"
+                            + (hasAudio ? " cursor-pointer hover:bg-blue-50" : "");
 
                         const songKey = normalizeTitle(track.title || '');
+                        const actionHtml = hasAudio
+                            ? '<button class="bg-blue-600 text-white text-[10px] px-3 py-1 rounded-full uppercase tracking-tighter">再生</button>'
+                            : '<span class="bg-gray-200 text-gray-500 text-[10px] px-3 py-1 rounded-full tracking-tighter">音源なし</span>';
                         li.innerHTML = `
                             <span class="text-gray-700 font-medium">${track.title}</span>
                             <span class="flex items-center gap-2">
                                 <button class="fav-btn text-lg leading-none text-gray-300 hover:text-pink-400" title="お気に入り" data-song="${songKey.replace(/"/g, '&quot;')}">♡</button>
-                                <button class="bg-blue-600 text-white text-[10px] px-3 py-1 rounded-full uppercase tracking-tighter">再生</button>
+                                ${actionHtml}
                             </span>
                         `;
 
-                        li.onclick = () => {
-                            currentTrackIndex = index;
-                            playSelectedTrack();
-                        };
+                        if (hasAudio) {
+                            li.onclick = () => {
+                                currentTrackIndex = index;
+                                playSelectedTrack();
+                            };
+                        }
 
                         const favBtn = li.querySelector('.fav-btn');
                         favBtn.addEventListener('click', (e) => {
